@@ -1,29 +1,53 @@
-const prompt = require("prompt-sync")
-const prom = prompt()
-
 const bd = []
-let id_inicial = 0
 
-function novoUsuario(){
-    id_inicial++
-    let id = id_inicial
-    let nome = prom("Nome: ")
-    let email = prom("E-mail: ")
-    let senha = prom("Senha: ")
-    let dataCriacao = "2023"
-    let ativo = true
-    
-    dados = {
-        id,
-        nome,
-        email,
-        senha,
-        dataCriacao,
-        ativo
+class Usuario {
+    id
+    nome
+    email
+    senha
+    permicoes
+    dataCriacao
+    ultimoLogin
+    ativo
+
+    constructor(id, nome, email, senha, permicoes, dataCriacao, ultimoLogin, ativo){
+        this.id = id
+        this.nome = nome
+        this.email = email
+        this.senha = senha
+        this.permicoes = permicoes
+        this.dataCriacao = dataCriacao
+        this.ultimoLogin = ultimoLogin
+        this.ativo = ativo
     }
 
-    bd.push(dados)
+}
 
+function novoUsuario(nome, email, senha, permicoes, ativo){
+    const erros = []
+
+    if(!nome || !email || !senha || !permicoes || !ativo){
+        erros.push("Todos os dados são obrigatórios")
+    }
+
+    validarSenha(senha, erros)
+
+    if(erros.length > 0){
+        return console.log(erros)
+    }
+
+    let user = new Usuario(1,nome,email,senha, permicoes, new Date(), null, ativo)
+
+    bd.push(user)
+}
+
+function validarSenha(senha, erros){
+    
+    senha = String(senha)
+
+    if(senha.length < 8){
+        erros.push("a senha deve conter no minimo 8 caracteres")
+    }
 }
 
 function alterarUsuario(){
@@ -37,13 +61,12 @@ function alterarUsuario(){
             let nome = prom("Nome: ")
             
             if(nome){
+
                 bd[i].nome = nome
             }
             
             break
-        }
-        
-        
+        } 
     }
 }
 
@@ -87,8 +110,5 @@ function listarUsuario(){
 }
 
 
-novoUsuario()
-novoUsuario()
-listarUsuario()
-deletarUsuario()
+novoUsuario("pablo","wwwww","wwwwww", "www", true)
 listarUsuario()
