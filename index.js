@@ -37,16 +37,16 @@ export function novoUsuario(nome, email, senha, permissoes, ativo){
             erros.push("O nome precisa ter no mínimo 3 caracteres!")
         }
         
-        if(!Array.isArray(permissoes)){
+        if(!Array.isArray(permissoes)){ //verifica se as permissoes informadas são as esperadas pelo sistema
             erros.push("A permissão deve ser uma lista!")
         }else if(!permissoes.some((permissao) => permissao === "ESCRITA") && !permissoes.some((permissao) => permissao === "EDICAO") &&
                  !permissoes.some((permissao) => permissao === "EXCLUSAO") && !permissoes.some((permissao) => permissao === "VISUALIZACAO")){
             erros.push("A permissão deve receber: ESCRITA, EDICAO, EXCLUSAO ou VISUALIZACAO!")
         }
 
-        validarEmail(email,erros)
+        validarEmail(email,erros) //verifica se o e-mail é valido
         
-        senha = validarSenha(senha, erros)
+        senha = validarSenha(senha, erros) //verifica se a senha é valida e retorna o hash
 
         if(typeof ativo !== "boolean"){
             erros.push("O campo ativo deve ser do tipo booleano!")
@@ -74,7 +74,7 @@ export function alterarUsuario(id,nome, email, senha, permissoes, ativo){
             return console.log("Usuário sem permissão para editar um cadastro!")
         }
 
-        if(!nome && !email && !senha && !permissoes && ativo === undefined){
+        if(!nome && !email && !senha && !permissoes && ativo === undefined){ //verifica se algum dado foi passado
             return console.log("Você deve informar algum dado para que seja alterado!")
         }
 
@@ -83,7 +83,7 @@ export function alterarUsuario(id,nome, email, senha, permissoes, ativo){
         let user = buscarUsuarioId(id)
         
         if(!user){
-            return console.log("Usuário não encontrado!")
+            return console.log("Usuário não encontrado!") //verifica se usuário informado existe
         }
 
         if(nome && nome.length < 3){
@@ -91,18 +91,18 @@ export function alterarUsuario(id,nome, email, senha, permissoes, ativo){
         }
         
         if(email && email !== user.email){
-            validarEmail(email,erros)
+            validarEmail(email,erros) //verifica se o e-mail é valido
         }
         
         if(senha){
-            senha = validarSenha(senha, erros)
+            senha = validarSenha(senha, erros) //verifica se a senha é valida e retorna o hash
         }
         
         
-        if(permissoes && !Array.isArray(permissoes)){
+        if(permissoes && !Array.isArray(permissoes)){ //verifica se as permissoes informadas são as esperadas pelo sistema
             erros.push("A permissão deve ser uma lista!")
         }else if(permissoes && !permissoes.some((permissao) => permissao === "ESCRITA") && !permissoes.some((permissao) => permissao === "EDICAO") &&
-                    !permissoes.some((permissao) => permissao === "EXCLUSAO") && !permissoes.some((permissao) => permissao === "VISUALIZACAO")){
+                    !permissoes.some((permissao) => permissao === "EXCLUSAO") && !permissoes.some((permissao) => permissao === "VISUALIZACAO")){  
             erros.push("A permissão deve receber: ESCRITA, EDICAO, EXCLUSAO ou VISUALIZACAO!")
         }
       
@@ -128,17 +128,17 @@ export function alterarUsuario(id,nome, email, senha, permissoes, ativo){
 
 export function deletarUsuario(id){
     try{
-        if(!verificaPermissao("EXCLUSAO")){
+        if(!verificaPermissao("EXCLUSAO")){ //verifica se usuario tem permissao para excluir
             return console.log("Usuário sem permissão para excluir um cadastro!")
         }
         
-        const user = buscarUsuarioId(id)
+        const user = buscarUsuarioId(id) //busca o usuario que vai ser deletado
         
-        if(!user){
+        if(!user){ //verifica se o usuário a ser deletado existe
             return console.log("Usuário não encontrado!")
         }
        
-        bd.splice(bd.indexOf(user),1)
+        bd.splice(bd.indexOf(user),1) //deleta o usuário
         
         return console.log(`Usuário ${user.nome} deletado com sucesso!`)
 
@@ -149,7 +149,7 @@ export function deletarUsuario(id){
 
 export function listarUsuario(){
     try{
-        if(!verificaPermissao("VISUALIZACAO")){
+        if(!verificaPermissao("VISUALIZACAO")){ //verifica se usuario tem permissao para visualizar
             return console.log("Usuário sem permissão para visualizar cadastros!")
         }
         return console.log(bd)
@@ -162,20 +162,20 @@ export function listarUsuario(){
 export function login(email, senha){
     try{
         if(usuariologado !== null){
-            return console.log("Já existe um usuário Logado!")
+            return console.log("Já existe um usuário Logado!") //verifica se existe um usuário logado
         }
         
-        if(!email || !senha){
+        if(!email || !senha){ //verifica se foi passado todos os valores para efetuar login
             return console.log("Você precisa informar e-mail e senha para logar no sistema!")
         }
 
         const user = bd.find(user => user.email === email)
     
-        if(!user || !bcrypt.compare(senha,user.senha)){
+        if(!user || !bcrypt.compare(senha,user.senha)){ //verifica se email e senha são validos
             return console.log("Usuário ou senha incorretos!")
         }
         
-        if(!user.ativo){
+        if(!user.ativo){ //verifica se o usuário não está inativo
             return console.log("Usuário inativo!")
         }
         
@@ -191,7 +191,7 @@ export function login(email, senha){
 export function logout(){
     try{
         if(!usuariologado){
-            return console.log("Nenhum usuário Logado!")
+            return console.log("Nenhum usuário Logado!") //verifica se existe um usuario logado
         }
         const nome = usuariologado.nome
         usuariologado = null
