@@ -1,94 +1,308 @@
-const prompt = require("prompt-sync")
-const prom = prompt()
+import bcrypt from "bcryptjs"
 
 const bd = []
-let id_inicial = 0
+let usuariologado = null
 
-function novoUsuario(){
-    id_inicial++
-    let id = id_inicial
-    let nome = prom("Nome: ")
-    let email = prom("E-mail: ")
-    let senha = prom("Senha: ")
-    let dataCriacao = "2023"
-    let ativo = true
+class Usuario {
+    id
+    nome
+    email
+    senha
+    permicoes
+    dataCriacao
+    ultimoLogin
+    ativo
+
+    constructor(id, nome, email, senha, permicoes, dataCriacao, ultimoLogin, ativo){
+        this.id = id
+        this.nome = nome
+        this.email = email
+        this.senha = senha
+        this.permicoes = permicoes
+        this.dataCriacao = dataCriacao
+        this.ultimoLogin = ultimoLogin
+        this.ativo = ativo
+    }
+}
+
+export function novoUsuario(nome, email, senha, permissoes, ativo){
+    try{
+        const erros = []
     
-    dados = {
-        id,
-        nome,
-        email,
-        senha,
-        dataCriacao,
-        ativo
+        if(!nome || !email || !senha || !permissoes || ativo === undefined){
+            return console.log("Todos os dados são obrigatórios")
+        }
+
+        if(nome.length < 3){
+            erros.push("O nome precisa ter no mínimo 3 caracteres!")
+        }
+        
+        if(!Array.isArray(permissoes)){
+            erros.push("A permissão deve ser uma lista!")
+        }else if(!permissoes.some((permissao) => permissao === "ESCRITA") && !permissoes.some((permissao) => permissao === "EDICAO") &&
+                 !permissoes.some((permissao) => permissao === "EXCLUSAO") && !permissoes.some((permissao) => permissao === "VISUALIZACAO")){
+            erros.push("A permissão deve receber: ESCRITA, EDICAO, EXCLUSAO ou VISUALIZACAO!")
+        }
+
+        validarEmail(email,erros)
+        
+        senha = validarSenha(senha, erros)
+
+        if(typeof ativo !== "boolean"){
+            erros.push("O campo ativo deve ser do tipo booleano!")
+        }
+        
+        if(erros.length > 0){
+            return console.log(erros)
+        }
+        
+        let user = new Usuario(newId(),nome,email,senha, permissoes, new Date(), null, ativo)
+        
+        bd.push(user)
+
+        return console.log(`Usuário ${user.nome} criado com sucesso!`)
+
+    }catch(err){
+        return console.log(err.message)
     }
-
-    bd.push(dados)
-
 }
 
-function alterarUsuario(){
-    let id_busca = prom("Informe o ID do Usuario que deseja atualizar: ")
+export function alterarUsuario(id,nome, email, senha, permissoes, ativo){
+    try{
 
-    for (let i = 0; i < bd.length; i++) {
+        if(!verificaPermissao("EDICAO")){
+            return console.log("Usuário sem permissão para editar um cadastro!")
+        }
+
+        if(!nome && !email && !senha && !permissoes && ativo === undefined){
+            return console.log("Você deve informar algum dado para que seja alterado!")
+        }
+
+        const erros = []
+
+        let user = buscarUsuarioId(id)
         
-        if(bd[i].id == id_busca){
-            console.log('cleito')
-            
-            let nome = prom("Nome: ")
-            
-            if(nome){
-                bd[i].nome = nome
-            }
-            
-            break
+        if(!user){
+            return console.log("Usuário não encontrado!")
+        }
+
+        if(nome && nome.length < 3){
+            erros.push("O nome precisa ter no mínimo 3 caracteres!")
+        }
+        
+        if(email && email !== user.email){
+            validarEmail(email,erros)
+        }
+        
+        if(senha){
+            senha = validarSenha(senha, erros)
         }
         
         
-    }
-}
-
-function deletarUsuario(){
-    let id_busca = prom("Informe o ID do Usuario que deseja deletar: ")
-
-    for (let i = 0; i < bd.length; i++) {
+        if(permissoes && !Array.isArray(permissoes)){
+            erros.push("A permissão deve ser uma lista!")
+        }else if(permissoes && !permissoes.some((permissao) => permissao === "ESCRITA") && !permissoes.some((permissao) => permissao === "EDICAO") &&
+                    !permissoes.some((permissao) => permissao === "EXCLUSAO") && !permissoes.some((permissao) => permissao === "VISUALIZACAO")){
+            erros.push("A permissão deve receber: ESCRITA, EDICAO, EXCLUSAO ou VISUALIZACAO!")
+        }
+      
         
-        if(bd[i].id == id_busca){
-            bd.splice(i,1)
-            break
+        if(ativo !== undefined && typeof ativo !== "boolean"){
+            erros.push("O campo ativo deve ser do tipo booleano!")
         }
         
-    }
+        if(erros.length > 0) return console.log(erros)
+        
+        if (nome) user.nome = nome
+        if (email) user.email = email
+        if (senha) user.senha = senha
+        if (permissoes) user.permicoes = permissoes
+        if (typeof ativo === "boolean") user.ativo = ativo
 
+        return console.log(`Usuário ${user.nome} atualizado com sucesso!`)
+          
+    }catch(err){
+        console.log(err.message)
+    }  
 }
 
-function login(){
-    let email = prom('Email: ')
+export function deletarUsuario(id){
+    try{
+        if(!verificaPermissao("EXCLUSAO")){
+            return console.log("Usuário sem permissão para excluir um cadastro!")
+        }
+        
+        const user = buscarUsuarioId(id)
+        
+        if(!user){
+            return console.log("Usuário não encontrado!")
+        }
+       
+        bd.splice(bd.indexOf(user),1)
+        
+        return console.log(`Usuário ${user.nome} deletado com sucesso!`)
+
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+
+export function listarUsuario(){
+    try{
+        if(!verificaPermissao("VISUALIZACAO")){
+            return console.log("Usuário sem permissão para visualizar cadastros!")
+        }
+        return console.log(bd)
+
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+
+export function login(email, senha){
+    try{
+        if(usuariologado !== null){
+            return console.log("Já existe um usuário Logado!")
+        }
+        
+        if(!email || !senha){
+            return console.log("Você precisa informar e-mail e senha para logar no sistema!")
+        }
+
+        const user = bd.find(user => user.email === email)
     
-    for (let i = 0; i < bd.length; i++) {
-        
-        if(bd[i].id == id_busca){
-            console.log('cleito')
-            
-            let nome = prom("Nome: ")
-            
-            if(nome){
-                bd[i].nome = nome
-            }
-            
-            break
+        if(!user || !bcrypt.compare(senha,user.senha)){
+            return console.log("Usuário ou senha incorretos!")
         }
         
+        if(!user.ativo){
+            return console.log("Usuário inativo!")
+        }
         
+        user.ultimoLogin = new Date()
+        usuariologado = user
+        return console.log(`Usuário ${usuariologado.nome} logado com sucesso!`) 
+
+    }catch(err){
+        return console.log(err.message)
     }
 }
 
-function listarUsuario(){
-    console.log(bd)
+export function logout(){
+    try{
+        if(!usuariologado){
+            return console.log("Nenhum usuário Logado!")
+        }
+        const nome = usuariologado.nome
+        usuariologado = null
+        return console.log(`Usuário ${nome} deslogado com sucesso!`)
+        
+    }catch(err){
+        return console.log(err.message)
+    }
 }
 
+export function buscarUsuarioId(id){ 
+    try{
+        return bd.find(user => user.id === id) //verifica se existe usuário com o id informado
 
-novoUsuario()
-novoUsuario()
-listarUsuario()
-deletarUsuario()
-listarUsuario()
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+
+function newId(){ // cria um novo ID
+    try{
+        if(bd.length === 0){ //verifica se é o primeiro registro do sistema
+            return 1
+        }
+    
+        return bd[bd.length -1].id +1
+
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+
+function verificaPermissao(permissao){ //verifica as permissões do usuário
+    try{
+        if(!usuariologado){
+            return false
+        }
+    
+        if(!usuariologado.permicoes.some((resp) => resp === permissao)){
+            return false
+        }
+    
+        return true
+        
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+function validarEmail(email, erros){ //valida o email
+    try{
+        const valida = email.split('@') // separa o email em 2
+    
+        if(valida.length < 2 || valida.length > 2) { // se não tiver @ ou mais de 1 @ da erro
+            return erros.push(`O E-mail "${email}" é inválido!`)
+        }
+
+        if(valida[0].includes(" ") || valida[1].includes(" ")){  // verifica se não tem espaços em brancos
+            return erros.push(`O E-mail "${email}" é inválido!`)
+        }
+        
+        if(!valida[1].includes('.') || valida[1].includes("..")){  // verifica regras de pontos na segunda parte do email
+            return erros.push(`O E-mail "${email}" é inválido!`)
+        }
+
+        if(valida[0][0] === '.' || valida[0][valida[0].length -1] === '.' ||
+            valida[1][0] === '.' || valida[1][valida[1].length -1] === '.'){ // verifica regras de pontos no email
+            
+            return erros.push(`O E-mail "${email}" é inválido!`)
+        }
+
+        if(bd.some((user) => user.email === email)){ //verifica se o email ja existe no sistema
+            return erros.push(`O E-mail "${email}" já é cadastrado no sistema!`)
+        }
+
+    }catch(err){
+        return console.log(err.message)
+    }
+}
+
+function validarSenha(senha, erros){ //valida a senha
+    try{
+        const maisculas = /[A-Z]/
+        const minusculas = /[a-z]/
+        const numeros = /[0-9]/
+        const especial = /[!|@|#|$|%|^&|*|(|)|_|-|=|+|:|;]/
+    
+        senha = String(senha)
+    
+        if(senha.length < 8){ 
+            erros.push("A senha deve conter no mínimo 8 caracteres!")
+        }
+    
+        if(!maisculas.test(senha)){
+            erros.push("A senha precisa conter ao menos 1 letra maiúscula!")
+        }
+    
+        if(!minusculas.test(senha)) {
+            erros.push("A senha precisa conter ao menos 1 letra minúscula!")
+        }
+    
+        if(!numeros.test(senha)){
+            erros.push("A senha precisa conter ao menos 1 número!")
+        }
+    
+        if(!especial.test(senha)){
+            erros.push("A senha deve conter ao menos 1 caractere especial!")
+        }
+    
+        if (erros.length === 0) return bcrypt.hashSync(senha,8)
+
+    }catch(err){
+        return console.log(err.message)
+    }
+}
